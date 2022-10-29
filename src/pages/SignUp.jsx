@@ -2,6 +2,11 @@ import React, {useState} from 'react'
 import {AiFillEyeInvisible, AiFillEye} from 'react-icons/ai'
 import { Link } from 'react-router-dom';
 import OAuth from '../components/OAuth';
+import {getAuth, createUserWithEmailAndPassword, updateProfile} from 'firebase/auth';
+import { db } from '../firebase.config';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
+import {toast} from 'react-toastify';
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
@@ -9,13 +14,33 @@ const SignUp = () => {
     email: "",
     password: ""
   });
+
   const [showPassword, setShowPassword] = useState(false);
   const {name, email, password} = formData;
-  
+  const navigate = useNavigate();
   const onChange = (e) => {
     setFormData((prevState) => ({
       ...prevState, [e.target.name]: e.target.value
     }))
+  }
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const auth = getAuth();
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      updateProfile(auth.currentUser, {
+        displayName: name
+      })
+      const user = userCredential.user;
+      const formDataCopy = {...formData};
+      delete formDataCopy.password;
+      formDataCopy.timestamp = serverTimestamp();
+      await setDoc(doc(db, "users", user.uid), formDataCopy);
+      //toast.success("Sign up was successful");
+      navigate('/');
+    } catch (error) {
+      toast.error("Something went wrong with the registration")
+    }
   }
   return (
     <section>
@@ -25,7 +50,7 @@ const SignUp = () => {
           <img src="https://images.unsplash.com/flagged/photo-1564767609342-620cb19b2357?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1373&q=80" alt="" className='w-full rounded-2xl'  />
         </div>
         <div className='w-full md:w-[67%] lg:w-[40%] lg:ml-20'>
-          <form >
+          <form onSubmit={onSubmit}>
           <input type="text" name="name" value={name} onChange={onChange} placeholder="Full Name" autoComplete='off'
               className='w-full mb-6 px-4 py-2 text-xl text-gray-700 bg-white border-gray-300 rounded transition ease-in-out'
             />  
